@@ -2,7 +2,7 @@
   "name": "La Mar de Salaos",
   "short_name": "La Mar",
   "description": "Gestión diaria de La Mar de Salaos — ingresos, agenda y alumnos",
-  "start_url": "./LaMarDeSalaos_v10.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
