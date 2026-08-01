@@ -411,9 +411,9 @@ body.vd .fabs{bottom:20px}
 .sdiv{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--txmu);margin:16px 0 9px;display:flex;align-items:center;gap:8px}
 .sdiv::after{content:'';flex:1;height:1px;background:var(--bdr)}
 /* ═══ TOAST (Visibility of system status) ═══ */
-.toast{position:fixed;bottom:calc(var(--nh)+10px);left:50%;transform:translateX(-50%) translateY(60px);background:var(--txt);color:#fff;padding:11px 22px;border-radius:var(--rp);font-size:13.5px;font-weight:700;box-shadow:var(--shl);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:9999;white-space:nowrap;pointer-events:none;max-width:90vw;text-overflow:ellipsis;overflow:hidden}
+.toast{position:fixed;bottom:calc(var(--nh)+10px);left:50%;transform:translateX(-50%) translateY(60px);opacity:0;background:var(--txt);color:#fff;padding:11px 22px;border-radius:var(--rp);font-size:13.5px;font-weight:700;box-shadow:var(--shl);transition:all .25s ease-out;z-index:9999;white-space:nowrap;pointer-events:none;max-width:90vw;text-overflow:ellipsis;overflow:hidden}
 body.vd .toast{bottom:20px}
-.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
 /* ═══ RESPONSIVE ═══ */
 @media(max-width:420px){
   .hdr{padding:8px 12px}
