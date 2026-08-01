@@ -3276,7 +3276,7 @@ function toast(msg){
  const t=el('toast');
  t.textContent=msg;t.classList.add('show');
  clearTimeout(_toastTimer);
- _toastTimer=setTimeout(()=>t.classList.remove('show'),2800);
+ _toastTimer=setTimeout(()=>{t.classList.remove('show');setTimeout(()=>{t.style.display='none'},350);},2200);
 }
 
 // ═══════════════════ INIT ══════════════════════════════════════
