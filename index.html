@@ -1006,10 +1006,11 @@ body.vd .toast{bottom:20px}
    <div class="csec"><h3>☁️ OneDrive</h3>
     <div class="dbs" id="odstat"><span class="ddot off" id="oddot"></span><span id="odstxt">Sin conectar</span></div>
     <button class="btn bt2 btn-sm" style="width:100%;margin-bottom:5px;justify-content:center" onclick="odConnect()" id="odBtnConnect">🔗 Conectar OneDrive</button>
-    <button class="btn bok2 btn-sm" style="width:100%;margin-bottom:5px;justify-content:center;display:none" onclick="odUpload()" id="odBtnUp">⬆️ Subir a OneDrive</button>
-    <button class="btn bt2 btn-sm" style="width:100%;margin-bottom:5px;justify-content:center;display:none" onclick="odDownload()" id="odBtnDown">⬇️ Descargar de OneDrive</button>
+    <button class="btn bok2 btn-sm" style="width:100%;margin-bottom:5px;justify-content:center;display:none" onclick="odSync()" id="odBtnSync">🔄 Sincronizar (seguro)</button>
     <button class="btn bg btn-sm" style="width:100%;justify-content:center;display:none" onclick="odDisconnect()" id="odBtnOut">🔌 Desconectar</button>
     <div id="od-ts" style="margin-top:10px;font-size:11.5px;font-weight:700;color:var(--txmu);line-height:1.9"></div>
+    <div class="fg" style="margin-top:8px"><label>⏱ Sincronización automática cada (minutos, 0 = desactivada)</label><input type="number" id="odAutoMin" min="0" step="1" placeholder="2" oninput="odChangeInterval(this.value)"></div>
+    <div style="margin-top:6px;font-size:11px;color:var(--txmu);line-height:1.6">Sincronizar fusiona los cambios de ambos dispositivos (nunca sobrescribe a lo bruto). Puedes pulsar el botón cuando quieras, y además la app sincroniza sola cada X minutos si lo activas aquí.</div>
     <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bdr)">
      <div style="font-size:12px;font-weight:700;color:var(--txmu);margin-bottom:6px">📲 Contactos WhatsApp</div>
      <div style="font-size:12px;font-weight:600;color:var(--txmu);margin-bottom:8px">Si un contacto nuevo no aparece en WhatsApp, pulsa este botón para normalizar todos los números.</div>
@@ -2186,7 +2187,7 @@ function useTmpl(id){
  el('wa-result').innerHTML=buildWAResultHTML('(Plantilla)',t.cat,'',t.name,t.text,null);
  setWATab('hist');toast('✅ Plantilla cargada — edita y envía');
 }
-function delTmpl(id){if(!confirm('¿Eliminar plantilla?'))return;sTmpl(gTmpl().filter(t=>t.id!==id));toast('🗑️');markDirty();rWATmpl();}
+function delTmpl(id){if(!confirm('¿Eliminar plantilla?'))return;sTmpl(gTmpl().filter(t=>t.id!==id));odTomb('templates',id);toast('🗑️');markDirty();rWATmpl();}
 function createAlertFromWA(texto){openMod('modal-alerta');el('alt-titulo').value=texto;}
 
 // ═══════════════════ RENDER: ALERTAS CATEGORIZADAS ═════════════
@@ -2462,7 +2463,7 @@ function calcPend(){
  else if(a===0&&c>0){el('ing-pag').value='no';}
 }
 function togP(id){const e=gE();const i=e.findIndex(x=>x.id===id);if(i<0)return;e[i].pagado=!e[i].pagado;sE(e);markDirty();toast(e[i].pagado?'✅ Cobrado':'⏳ Marcado pendiente');render();}
-function delIng(id){if(!confirm('¿Eliminar este ingreso?'))return;sE(gE().filter(e=>e.id!==id));markDirty();toast('🗑️ Eliminado');render();}
+function delIng(id){if(!confirm('¿Eliminar este ingreso?'))return;sE(gE().filter(e=>e.id!==id));odTomb('extras',id);markDirty();toast('🗑️ Eliminado');render();}
 
 // ═══════════════════ GASTO ACTIONS ═════════════════════════════
 function editGastEntry(id){
@@ -2482,7 +2483,7 @@ function saveG(){
  else gs.push({id:gid(),año:cY,mes:cM,concepto:conc,importe:imp,desc});
  sG(gs);eGastId=null;clm('modal-gasto');toast(eGastId?'✅ Gasto actualizado':'✅ Gasto guardado');markDirty();render();
 }
-function delG(id){if(!confirm('¿Eliminar este gasto?'))return;sG(gG().filter(g=>g.id!==id));markDirty();toast('🗑️ Eliminado');render();}
+function delG(id){if(!confirm('¿Eliminar este gasto?'))return;sG(gG().filter(g=>g.id!==id));odTomb('gastos',id);markDirty();toast('🗑️ Eliminado');render();}
 function openCopyG(){
  const s=el('copyg-mes');s.innerHTML='';
  const ms=new Set(gG().filter(g=>!(g.año===cY&&g.mes===cM)).map(g=>g.año+'|'+g.mes));
@@ -2670,7 +2671,7 @@ function showAlDet(id){
  const rows=[['Nombre completo',a.nombre+(a.apellidos?' '+a.apellidos:'')],['Edad',ag!==null?ag+' años':'—'],['Fecha nac.',a.fechaNac||'—'],['Teléfono',a.telefono||'—'],['Email',a.mail||'—'],['Padre/Madre',a.padre||'—'],['Cómo nos conoció',a.comoConocieron||'—'],['Actividad favorita',a.actividadFavorita||'—'],['Última actividad',st2.last||'—'],['Total pagado',fmt(st2.total)]];
  el('adet-body').innerHTML=`<div style="margin-bottom:12px">`+rows.map(r=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bdr);font-size:13.5px"><span style="font-weight:700;color:var(--txmu);flex-shrink:0;margin-right:10px">${esc(r[0])}</span><span style="font-weight:700;text-align:right">${esc(String(r[1]))}</span></div>`).join('')+'</div>'+(a.notas?`<div style="padding:10px;background:var(--tll);border-radius:var(--rs);font-size:13px;font-weight:600;color:var(--txm)">${esc(a.notas)}</div>`:'')+(a.telefono?`<a href="https://wa.me/34${a.telefono.replace(/\s/g,'')}" target="_blank" class="btn bt2" style="width:100%;justify-content:center;margin-top:12px;text-decoration:none">📲 Abrir WhatsApp</a>`:'');
  el('aedit-btn').onclick=()=>{clm('modal-adet');editAl(id);};
- el('adel-btn').onclick=()=>{if(!confirm(`¿Eliminar "${a.nombre}"?`))return;sAl(gAl().filter(x=>x.id!==id));clm('modal-adet');toast('🗑️ Alumno eliminado');markDirty();renderAlumnos();};
+ el('adel-btn').onclick=()=>{if(!confirm(`¿Eliminar "${a.nombre}"?`))return;sAl(gAl().filter(x=>x.id!==id));odTomb('alumnos',id);clm('modal-adet');toast('🗑️ Alumno eliminado');markDirty();renderAlumnos();};
  openMod('modal-adet');
 }
 
@@ -2752,7 +2753,7 @@ function editEv(id){
  renderAlEventResults('');
  el('modal-ev').classList.add('open');
 }
-function delEv(id){if(!confirm('¿Eliminar este evento?'))return;sEv(gEv().filter(e=>e.id!==id));toast('🗑️ Evento eliminado');markDirty();renderCal();}
+function delEv(id){if(!confirm('¿Eliminar este evento?'))return;sEv(gEv().filter(e=>e.id!==id));odTomb('eventos',id);toast('🗑️ Evento eliminado');markDirty();renderCal();}
 function toggleRec(){el('erec-opts').style.display=el('erec').value?'block':'none';}
 function toggleAlF(){el('eal-opts').style.display=el('ealch').checked?'block':'none';}
 function saveEv(){
@@ -2784,7 +2785,7 @@ function showNota(id){
  el('ndth').textContent=n.titulo;
  el('ndet-body').innerHTML=`<div style="font-size:14px;line-height:1.65;white-space:pre-wrap;color:var(--txt);margin-bottom:12px">${esc(n.texto||'(sin contenido)')}</div><div style="font-size:12px;color:var(--txmu);font-weight:600">${fDate(n.fechaCreacion)}${n.enlaceTipo&&n.enlaceTipo!=='libre'?' · Enlazado: '+n.enlaceTipo:''}</div>`;
  el('nedit-btn').onclick=()=>{clm('modal-ndet');editNota(id);};
- el('ndel-btn').onclick=()=>{if(!confirm('¿Eliminar nota?'))return;sNt(gNt().filter(x=>x.id!==id));clm('modal-ndet');toast('🗑️ Nota eliminada');markDirty();renderNotas();};
+ el('ndel-btn').onclick=()=>{if(!confirm('¿Eliminar nota?'))return;sNt(gNt().filter(x=>x.id!==id));odTomb('notas',id);clm('modal-ndet');toast('🗑️ Nota eliminada');markDirty();renderNotas();};
  openMod('modal-ndet');
 }
 function editNota(id){
@@ -2857,7 +2858,7 @@ function saveChart(){
  sAC(cs);eChId=null;clm('modal-chart');toast('✅ Gráfica guardada');markDirty();rAdvGal();
 }
 function editAdv(id){eChId=id;const c=gAC().find(x=>x.id===id);if(!c)return;el('mch').textContent='Editar gráfica';el('cht').value=c.title||'';el('chtp').value=c.type||'bar';el('chmo').value=c.months||6;buildVG(c.variables||[]);openMod('modal-chart');}
-function delAdv(id){if(!confirm('¿Eliminar esta gráfica?'))return;dc('adv-'+id);sAC(gAC().filter(c=>c.id!==id));toast('🗑️');markDirty();rAdvGal();}
+function delAdv(id){if(!confirm('¿Eliminar esta gráfica?'))return;dc('adv-'+id);sAC(gAC().filter(c=>c.id!==id));odTomb('adv_charts',id);toast('🗑️');markDirty();rAdvGal();}
 
 // ═══════════════════ SELECTS REBUILD ═══════════════════════════
 function rebSel(){
@@ -3201,18 +3202,36 @@ function odUpdateUI(){
  const acc=odMsal&&odMsal.getAllAccounts()[0];
  const on=!!acc;
  document.getElementById('odBtnConnect').style.display=on?'none':'flex';
- document.getElementById('odBtnUp').style.display=on?'flex':'none';
- document.getElementById('odBtnDown').style.display=on?'flex':'none';
+ document.getElementById('odBtnSync').style.display=on?'flex':'none';
  document.getElementById('odBtnOut').style.display=on?'flex':'none';
  document.getElementById('oddot').className='ddot'+(on?' on':' off');
  document.getElementById('odstxt').textContent=on?acc.username:'Sin conectar';
+ const inp=document.getElementById('odAutoMin');
+ if(inp)inp.value=gSet('od_auto_min')!=null?gSet('od_auto_min'):2;
  odRenderTs();
+ odSetupAutoSync();
+}
+
+// ─── Sincronización automática cada X minutos (0 = desactivada) ──
+let odAutoTimer=null;
+function odChangeInterval(val){
+ const min=Math.max(0,parseFloat(val)||0);
+ sSet('od_auto_min',min);
+ odSetupAutoSync();
+ toast(min>0?'⏱ Sincronización automática cada '+min+' min':'⏱ Sincronización automática desactivada');
+}
+function odSetupAutoSync(){
+ if(odAutoTimer){clearInterval(odAutoTimer);odAutoTimer=null;}
+ const acc=odMsal&&odMsal.getAllAccounts()[0];
+ const min=gSet('od_auto_min')!=null?parseFloat(gSet('od_auto_min')):2;
+ if(acc&&min>0){
+  odAutoTimer=setInterval(()=>{if(navigator.onLine)odSync();},min*60000);
+ }
 }
 function odRenderTs(){
- const up=gSet('od_last_up'),down=gSet('od_last_down');
+ const ts=gSet('od_last_sync');
  const el=document.getElementById('od-ts');if(!el)return;
- el.innerHTML='<div>⬆️ Última subida: '+(up?new Date(up).toLocaleString('es-ES'):'—')+'</div>'+
-  '<div>⬇️ Última descarga: '+(down?new Date(down).toLocaleString('es-ES'):'—')+'</div>';
+ el.innerHTML='<div>🔄 Última sincronización: '+(ts?new Date(ts).toLocaleString('es-ES'):'—')+'</div>';
 }
 async function odConnect(){
  if(!odMsal){toast('❌ No se pudo cargar el módulo de Microsoft');return;}
@@ -3235,37 +3254,82 @@ async function odGetToken(){
   await odMsal.acquireTokenRedirect({scopes:ODSCOPES});
  }
 }
-async function odUpload(){
- try{
-  const token=await odGetToken();
-  const body=JSON.stringify(getAllData(),null,2);
-  const res=await fetch('https://graph.microsoft.com/v1.0/me/drive/special/approot:/BBDD.json:/content',{
-   method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body
-  });
-  if(!res.ok)throw new Error('HTTP '+res.status);
-  sSet('od_last_up',new Date().toISOString());odRenderTs();
-  toast('☁️ Subido a OneDrive');
- }catch(e){toast('❌ Error al subir: '+(e.message||e));}
+const ODURL='https://graph.microsoft.com/v1.0/me/drive/special/approot:/BBDD.json:/content';
+
+// ─── Tombstones (borrados) ───────────────────────────────────────
+// Registra qué se ha borrado y cuándo, para que al fusionar con el
+// otro dispositivo un borrado no "resucite" el registro.
+function odTomb(col,id){
+ const t=gSet('__tomb')||[];
+ t.push({col,id,ts:Date.now()});
+ sSet('__tomb',t.length>800?t.slice(-800):t);
 }
-async function odDownload(){
+
+// ─── Fusión por ID (nunca sobrescribe a lo bruto) ────────────────
+// Para cada colección tipo lista (alumnos, ingresos, gastos...) se
+// hace una UNIÓN por id: lo que solo existe en un lado se conserva,
+// y si el mismo id existe en los dos con contenido distinto gana la
+// versión de ESTE dispositivo (el que está sincronizando ahora).
+// Los objetos únicos (config, notas del día, preferencias) se
+// fusionan superficialmente. Al final se aplican los borrados
+// (tombstones) de ambos lados para que no reaparezca nada borrado.
+const OD_ARR_COLS=['extras','gastos','alumnos','eventos','alertas','notas','adv_charts','wa_history','templates','feed_items'];
+function odMergeCol(local,remote,tombIds){
+ const map=new Map();
+ (remote||[]).forEach(r=>{if(r&&r.id!=null)map.set(r.id,r);});
+ (local||[]).forEach(l=>{if(l&&l.id!=null)map.set(l.id,l);});
+ let merged=[...map.values()];
+ if(tombIds&&tombIds.size)merged=merged.filter(x=>!tombIds.has(x.id));
+ return merged;
+}
+function odMergeObj(local,remote){return{...(remote||{}),...(local||{})};}
+function odMergeData(remote){
+ const local=getAllData();
+ const localTomb=gSet('__tomb')||[];
+ const remoteTomb=(remote&&remote.tombstones)||[];
+ const tombAll=[...localTomb,...remoteTomb];
+ const byCol={};
+ tombAll.forEach(t=>{if(!byCol[t.col])byCol[t.col]=new Set();byCol[t.col].add(t.id);});
+ const merged={};
+ OD_ARR_COLS.forEach(k=>{merged[k]=odMergeCol(local[k],remote&&remote[k],byCol[k]);});
+ merged.config=odMergeObj(local.config,remote&&remote.config);
+ merged.feed_prefs=odMergeObj(local.feed_prefs,remote&&remote.feed_prefs);
+ merged.day_notes=odMergeObj(local.day_notes,remote&&remote.day_notes);
+ merged.v=4;merged.ts=new Date().toISOString();
+ const seen=new Set(),dedup=[];
+ tombAll.forEach(t=>{const k=t.col+':'+t.id;if(!seen.has(k)){seen.add(k);dedup.push(t);}});
+ merged.tombstones=dedup.length>800?dedup.slice(-800):dedup;
+ return merged;
+}
+
+// ─── Sincronizar: descarga → fusiona → guarda local → sube ───────
+async function odSync(){
  try{
   const token=await odGetToken();
-  const res=await fetch('https://graph.microsoft.com/v1.0/me/drive/special/approot:/BBDD.json:/content',{
-   headers:{'Authorization':'Bearer '+token}
+  const res=await fetch(ODURL,{headers:{'Authorization':'Bearer '+token}});
+  let merged;
+  if(res.ok){
+   const remote=await res.json();
+   merged=odMergeData(remote);
+  }else if(res.status===404){
+   merged={...getAllData(),tombstones:gSet('__tomb')||[]};
+  }else throw new Error('HTTP '+res.status);
+  loadAll(merged);
+  sSet('__tomb',merged.tombstones||[]);
+  rebSel();render();
+  const up=await fetch(ODURL,{
+   method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+   body:JSON.stringify(merged,null,2)
   });
-  if(res.status===404){toast('⚠️ Aún no hay copia en OneDrive. Sube primero desde el otro dispositivo.');return;}
-  if(!res.ok)throw new Error('HTTP '+res.status);
-  const d=await res.json();
-  if(!confirm('¿Cargar datos desde OneDrive? Se sobreescribirá todo lo local.'))return;
-  loadAll(d);rebSel();render();
-  sSet('od_last_down',new Date().toISOString());odRenderTs();
-  toast('✅ Datos cargados desde OneDrive');
- }catch(e){toast('❌ Error al descargar: '+(e.message||e));}
+  if(!up.ok)throw new Error('HTTP '+up.status);
+  sSet('od_last_sync',new Date().toISOString());odRenderTs();
+  toast('🔄 Sincronizado con OneDrive');
+ }catch(e){toast('❌ Error al sincronizar: '+(e.message||e));}
 }
 if(odMsal){
  odMsal.handleRedirectPromise().catch(()=>{}).finally(()=>{
   const accs=odMsal.getAllAccounts();
-  if(accs[0])odMsal.setActiveAccount(accs[0]);
+  if(accs[0]){odMsal.setActiveAccount(accs[0]);odSync();}
   odUpdateUI();
  });
 }
