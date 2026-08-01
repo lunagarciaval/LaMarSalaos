@@ -3217,16 +3217,12 @@ function odRenderTs(){
 async function odConnect(){
  if(!odMsal){toast('❌ No se pudo cargar el módulo de Microsoft');return;}
  try{
-  const r=await odMsal.loginPopup({scopes:ODSCOPES});
-  odMsal.setActiveAccount(r.account);
-  odUpdateUI();toast('✅ OneDrive conectado');
+  await odMsal.loginRedirect({scopes:ODSCOPES});
  }catch(e){toast('❌ Error al conectar: '+(e.message||e));}
 }
 function odDisconnect(){
  const acc=odMsal.getActiveAccount()||odMsal.getAllAccounts()[0];
- odMsal.getAllAccounts().forEach(a=>{try{odMsal.setActiveAccount(a);}catch(e){}});
- if(acc){try{odMsal.logoutPopup({account:acc});}catch(e){}}
- setTimeout(odUpdateUI,300);
+ if(acc){try{odMsal.logoutRedirect({account:acc});}catch(e){toast('❌ Error: '+e.message);}}
 }
 async function odGetToken(){
  const acc=odMsal.getActiveAccount()||odMsal.getAllAccounts()[0];
@@ -3236,8 +3232,7 @@ async function odGetToken(){
   const r=await odMsal.acquireTokenSilent({scopes:ODSCOPES,account:acc});
   return r.accessToken;
  }catch(e){
-  const r=await odMsal.acquireTokenPopup({scopes:ODSCOPES});
-  return r.accessToken;
+  await odMsal.acquireTokenRedirect({scopes:ODSCOPES});
  }
 }
 async function odUpload(){
