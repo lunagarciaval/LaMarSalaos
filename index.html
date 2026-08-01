@@ -15,6 +15,7 @@
 <title>La Mar de Salaos</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
 <style>
 /* ═══ DESIGN TOKENS (Nielsen: Consistency & Standards) ═══ */
 :root{
@@ -1001,6 +1002,14 @@ body.vd .toast{bottom:20px}
      <div id="db-save-ts">💾 Último guardado: —</div>
      <div id="db-bkp-ts">📄 Último backup: —</div>
     </div>
+   </div>
+   <div class="csec"><h3>☁️ OneDrive</h3>
+    <div class="dbs" id="odstat"><span class="ddot off" id="oddot"></span><span id="odstxt">Sin conectar</span></div>
+    <button class="btn bt2 btn-sm" style="width:100%;margin-bottom:5px;justify-content:center" onclick="odConnect()" id="odBtnConnect">🔗 Conectar OneDrive</button>
+    <button class="btn bok2 btn-sm" style="width:100%;margin-bottom:5px;justify-content:center;display:none" onclick="odUpload()" id="odBtnUp">⬆️ Subir a OneDrive</button>
+    <button class="btn bt2 btn-sm" style="width:100%;margin-bottom:5px;justify-content:center;display:none" onclick="odDownload()" id="odBtnDown">⬇️ Descargar de OneDrive</button>
+    <button class="btn bg btn-sm" style="width:100%;justify-content:center;display:none" onclick="odDisconnect()" id="odBtnOut">🔌 Desconectar</button>
+    <div id="od-ts" style="margin-top:10px;font-size:11.5px;font-weight:700;color:var(--txmu);line-height:1.9"></div>
     <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bdr)">
      <div style="font-size:12px;font-weight:700;color:var(--txmu);margin-bottom:6px">📲 Contactos WhatsApp</div>
      <div style="font-size:12px;font-weight:600;color:var(--txmu);margin-bottom:8px">Si un contacto nuevo no aparece en WhatsApp, pulsa este botón para normalizar todos los números.</div>
@@ -3169,6 +3178,101 @@ function restoreData(ev){
   }catch(err){toast('❌ Error al leer: '+err.message);}
  };
  r.readAsText(f);ev.target.value='';
+}
+
+// ═══════════════════ OneDrive · Fase 2 ═══════════════════════════
+// Login con Microsoft (MSAL.js, cuentas personales) + lectura/
+// escritura de BBDD.json en la carpeta privada de la app dentro de
+// OneDrive (scope Files.ReadWrite.AppFolder — no toca el resto del
+// OneDrive de Ana). No sustituye a localStorage: es una sincronización
+// manual (botones Subir/Descargar) que se suma al guardado local.
+const ODCLIENTID='4b1b5ebb-3d26-4cc3-b95c-af126f422136';
+const ODSCOPES=['Files.ReadWrite.AppFolder'];
+const odMsal=(typeof msal!=='undefined')?new msal.PublicClientApplication({
+ auth:{
+  clientId:ODCLIENTID,
+  authority:'https://login.microsoftonline.com/consumers',
+  redirectUri:window.location.origin+window.location.pathname
+ },
+ cache:{cacheLocation:'localStorage',storeAuthStateInCookie:false}
+}):null;
+
+function odUpdateUI(){
+ const acc=odMsal&&odMsal.getAllAccounts()[0];
+ const on=!!acc;
+ document.getElementById('odBtnConnect').style.display=on?'none':'flex';
+ document.getElementById('odBtnUp').style.display=on?'flex':'none';
+ document.getElementById('odBtnDown').style.display=on?'flex':'none';
+ document.getElementById('odBtnOut').style.display=on?'flex':'none';
+ document.getElementById('oddot').className='ddot'+(on?' on':' off');
+ document.getElementById('odstxt').textContent=on?acc.username:'Sin conectar';
+ odRenderTs();
+}
+function odRenderTs(){
+ const up=gSet('od_last_up'),down=gSet('od_last_down');
+ const el=document.getElementById('od-ts');if(!el)return;
+ el.innerHTML='<div>⬆️ Última subida: '+(up?new Date(up).toLocaleString('es-ES'):'—')+'</div>'+
+  '<div>⬇️ Última descarga: '+(down?new Date(down).toLocaleString('es-ES'):'—')+'</div>';
+}
+async function odConnect(){
+ if(!odMsal){toast('❌ No se pudo cargar el módulo de Microsoft');return;}
+ try{
+  const r=await odMsal.loginPopup({scopes:ODSCOPES});
+  odMsal.setActiveAccount(r.account);
+  odUpdateUI();toast('✅ OneDrive conectado');
+ }catch(e){toast('❌ Error al conectar: '+(e.message||e));}
+}
+function odDisconnect(){
+ const acc=odMsal.getActiveAccount()||odMsal.getAllAccounts()[0];
+ odMsal.getAllAccounts().forEach(a=>{try{odMsal.setActiveAccount(a);}catch(e){}});
+ if(acc){try{odMsal.logoutPopup({account:acc});}catch(e){}}
+ setTimeout(odUpdateUI,300);
+}
+async function odGetToken(){
+ const acc=odMsal.getActiveAccount()||odMsal.getAllAccounts()[0];
+ if(!acc)throw new Error('No hay sesión de OneDrive');
+ odMsal.setActiveAccount(acc);
+ try{
+  const r=await odMsal.acquireTokenSilent({scopes:ODSCOPES,account:acc});
+  return r.accessToken;
+ }catch(e){
+  const r=await odMsal.acquireTokenPopup({scopes:ODSCOPES});
+  return r.accessToken;
+ }
+}
+async function odUpload(){
+ try{
+  const token=await odGetToken();
+  const body=JSON.stringify(getAllData(),null,2);
+  const res=await fetch('https://graph.microsoft.com/v1.0/me/drive/special/approot:/BBDD.json:/content',{
+   method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body
+  });
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  sSet('od_last_up',new Date().toISOString());odRenderTs();
+  toast('☁️ Subido a OneDrive');
+ }catch(e){toast('❌ Error al subir: '+(e.message||e));}
+}
+async function odDownload(){
+ try{
+  const token=await odGetToken();
+  const res=await fetch('https://graph.microsoft.com/v1.0/me/drive/special/approot:/BBDD.json:/content',{
+   headers:{'Authorization':'Bearer '+token}
+  });
+  if(res.status===404){toast('⚠️ Aún no hay copia en OneDrive. Sube primero desde el otro dispositivo.');return;}
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const d=await res.json();
+  if(!confirm('¿Cargar datos desde OneDrive? Se sobreescribirá todo lo local.'))return;
+  loadAll(d);rebSel();render();
+  sSet('od_last_down',new Date().toISOString());odRenderTs();
+  toast('✅ Datos cargados desde OneDrive');
+ }catch(e){toast('❌ Error al descargar: '+(e.message||e));}
+}
+if(odMsal){
+ odMsal.handleRedirectPromise().catch(()=>{}).finally(()=>{
+  const accs=odMsal.getAllAccounts();
+  if(accs[0])odMsal.setActiveAccount(accs[0]);
+  odUpdateUI();
+ });
 }
 
 // ═══════════════════ TOAST ═════════════════════════════════════
