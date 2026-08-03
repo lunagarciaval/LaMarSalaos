@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -60,7 +60,7 @@ body{font-family:'Nunito',-apple-system,BlinkMacSystemFont,sans-serif;background
 .ico-btn.co{background:var(--col);color:var(--co)}
 .notif-dot{position:absolute;top:3px;right:3px;width:9px;height:9px;background:var(--co);border-radius:50%;border:2px solid var(--wh)}
 /* ═══ NAV (Nielsen: Recognition not Recall — visible tab labels) ═══ */
-.nav{background:var(--wh);display:flex;border-top:1.5px solid var(--bdr);padding:4px 4px 4px;position:fixed;bottom:0;left:0;right:0;z-index:70;gap:1px;box-shadow:0 -2px 16px rgba(60,58,94,.08)}
+.nav{background:var(--wh);display:flex;border-top:1.5px solid var(--bdr);padding:4px 4px calc(4px + env(safe-area-inset-bottom));position:fixed;bottom:0;left:0;right:0;z-index:70;gap:1px;box-shadow:0 -2px 16px rgba(60,58,94,.08)}
 .nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 2px 3px;border:none;background:transparent;color:var(--txmu);font-family:inherit;font-size:9.5px;font-weight:700;cursor:pointer;border-radius:10px;transition:color .2s;position:relative;min-width:0;min-height:var(--tap-sm)}
 .nb .ni{font-size:20px;line-height:1;transition:transform .2s}
 .nb.active{color:var(--tdd);background:var(--tll)}
@@ -75,7 +75,7 @@ body.vd .nb.active{background:var(--tll);border-bottom:none}
 body.vd .nb.active::after{display:none}
 body.vd .nb .ni{font-size:17px}
 /* ═══ MAIN ═══ */
-.main{padding:14px 13px calc(var(--nh)+16px);max-width:840px;margin:0 auto}
+.main{padding:14px 13px calc(var(--nh) + env(safe-area-inset-bottom) + 16px);max-width:840px;margin:0 auto}
 body.vd .main{padding:14px 18px 40px}
 /* ═══ PANELS ═══ */
 .panel{display:none}.panel.active{display:block}
@@ -161,6 +161,25 @@ table{width:100%;border-collapse:collapse}
 .th-sort{cursor:pointer;user-select:none;white-space:nowrap}
 .th-sort:hover{color:var(--tdd)}
 .sort-ic{display:inline-block;font-size:10px;margin-left:3px;color:var(--txmu)}
+/* ═══ TABLA DE INGRESOS EN MÓVIL → TARJETAS (sin scroll lateral) ═══
+   Por defecto (móvil) cada fila se convierte en una tarjeta vertical
+   con "Etiqueta: valor". En escritorio (body.vd) vuelve a ser la
+   tabla normal de siempre, sin ningún cambio. */
+.ing-tbl-wrap{overflow-x:visible}
+.ing-tbl thead{display:none}
+.ing-tbl,.ing-tbl tbody,.ing-tbl tr{display:block;width:100%}
+.ing-tbl tr{background:var(--wh);border:1.5px solid var(--bdr);border-radius:var(--rs);margin-bottom:10px;overflow:hidden}
+.ing-tbl td{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--bdr);text-align:right;white-space:normal}
+.ing-tbl td:last-child{border-bottom:none}
+.ing-tbl td:empty,.ing-tbl td[data-label=""]{justify-content:flex-end}
+.ing-tbl td::before{content:attr(data-label);font-weight:700;font-size:11.5px;color:var(--txmu);text-transform:uppercase;letter-spacing:.3px;text-align:left;margin-right:auto;flex-shrink:0}
+.ing-tbl td[data-label=""]::before{content:none}
+body.vd .ing-tbl-wrap{overflow-x:auto}
+body.vd .ing-tbl thead{display:table-header-group}
+body.vd .ing-tbl,body.vd .ing-tbl tbody{display:table}
+body.vd .ing-tbl tr{display:table-row;background:none;border:none;border-radius:0;margin-bottom:0}
+body.vd .ing-tbl td{display:table-cell;padding:10px 12px;border-bottom:1px solid var(--bdr);text-align:left}
+body.vd .ing-tbl td::before{content:none}
 .pend-month-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;user-select:none;border-radius:var(--rs);background:var(--wh);border:1.5px solid var(--bdr);margin-bottom:4px;transition:background .15s}
 .pend-month-hdr:hover,.pend-month-hdr.open{background:var(--tll);border-color:var(--t)}
 .pend-month-body{display:none;border:1.5px solid var(--t);border-top:none;border-radius:0 0 var(--rs) var(--rs);overflow:hidden;margin-bottom:10px}
@@ -227,8 +246,11 @@ tr:hover td{background:var(--tll)}
 .li{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--bdr)}
 .li:last-child{border-bottom:none}
 /* ═══ FABs (Nielsen: Flexibility & efficiency) ═══ */
-.fabs{position:fixed;bottom:calc(var(--nh)+14px);right:14px;display:flex;flex-direction:column;gap:10px;z-index:55}
+.fabs{position:fixed;bottom:calc(var(--nh) + env(safe-area-inset-bottom) + 14px);right:14px;display:flex;flex-direction:column;gap:10px;z-index:55}
 body.vd .fabs{bottom:20px}
+/* Botones "+ Añadir" inline: en móvil los sustituye el FAB; en escritorio se ven igual que antes */
+.hide-mob{display:none}
+body.vd .hide-mob{display:flex}
 .fab{width:54px;height:54px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shl);transition:all .22s;color:#fff;font-size:22px;font-weight:700}
 .fab:hover{transform:scale(1.1);box-shadow:0 12px 40px rgba(60,58,94,.2)}
 .fab:active{transform:scale(.94)}
@@ -411,13 +433,13 @@ body.vd .fabs{bottom:20px}
 .sdiv{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--txmu);margin:16px 0 9px;display:flex;align-items:center;gap:8px}
 .sdiv::after{content:'';flex:1;height:1px;background:var(--bdr)}
 /* ═══ TOAST (Visibility of system status) ═══ */
-.toast{position:fixed;bottom:calc(var(--nh)+10px);left:50%;transform:translateX(-50%) translateY(60px);opacity:0;background:var(--txt);color:#fff;padding:11px 22px;border-radius:var(--rp);font-size:13.5px;font-weight:700;box-shadow:var(--shl);transition:all .25s ease-out;z-index:9999;white-space:nowrap;pointer-events:none;max-width:90vw;text-overflow:ellipsis;overflow:hidden}
+.toast{position:fixed;bottom:calc(var(--nh) + env(safe-area-inset-bottom) + 10px);left:50%;transform:translateX(-50%) translateY(60px);opacity:0;background:var(--txt);color:#fff;padding:11px 22px;border-radius:var(--rp);font-size:13.5px;font-weight:700;box-shadow:var(--shl);transition:all .25s ease-out;z-index:9999;white-space:nowrap;pointer-events:none;max-width:90vw;text-overflow:ellipsis;overflow:hidden}
 body.vd .toast{bottom:20px}
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
 /* ═══ RESPONSIVE ═══ */
 @media(max-width:420px){
   .hdr{padding:8px 12px}
-  .main{padding:12px 10px calc(var(--nh)+12px)}
+  .main{padding:12px 10px calc(var(--nh) + env(safe-area-inset-bottom) + 12px)}
   .c2,.c3{gap:8px}
   .card{padding:12px}
   .val{font-size:18px}
@@ -499,11 +521,11 @@ body.vd .toast{bottom:20px}
   <div class="sec">
    <div class="sec-hdr">
     <div class="sec-title">💰 Ingresos <span class="badge bt" id="ibadge">0</span> <span class="badge bt" id="ing-ninos-badge" title="Niños distintos con ingreso este mes (los hermanos cuentan por separado)" style="background:var(--lvl);color:var(--lvd)">👧 <span id="ing-ninos-mes">0</span></span></div>
-    <div style="display:flex;gap:7px">
+    <div class="hide-mob" style="display:flex;gap:7px">
      <button class="btn bt2 btn-sm" onclick="openIngModal()">＋ Añadir</button>
     </div>
    </div>
-   <div class="tw"><table><thead><tr>
+   <div class="tw ing-tbl-wrap"><table class="ing-tbl"><thead><tr>
      <th class="th-sort" onclick="sortIng('alumno')">Alumno <span class="sort-ic" id="isrt-alumno"></span></th>
      <th class="th-sort" onclick="sortIng('actividad')">Actividad <span class="sort-ic" id="isrt-actividad"></span></th>
      <th class="th-sort" onclick="sortIng('cuota')">Cuota <span class="sort-ic" id="isrt-cuota"></span></th>
@@ -523,7 +545,7 @@ body.vd .toast{bottom:20px}
     <div class="sec-title">💸 Gastos <span class="badge bt" id="gbadge">0</span></div>
     <div style="display:flex;gap:7px">
      <button class="btn bg btn-sm" onclick="openCopyG()">📋 Copiar mes</button>
-     <button class="btn bt2 btn-sm" onclick="openMod('modal-gasto')">＋ Añadir</button>
+     <button class="btn bt2 btn-sm hide-mob" onclick="openMod('modal-gasto')">＋ Añadir</button>
     </div>
    </div>
    <div id="glist"></div>
@@ -701,6 +723,9 @@ body.vd .toast{bottom:20px}
 <div class="fabs" id="fab-inicio">
  <button class="fab fco" onclick="nuevoAlumno()" title="Nuevo alumno">👧</button>
  <button class="fab fgr" onclick="openIngModal()" title="Registrar cobro">💰</button>
+</div>
+<div class="fabs" id="fab-registro" style="display:none">
+ <button class="fab fgr" id="reg-fab" onclick="regFAB()" title="Añadir">＋</button>
 </div>
 <div class="fabs" id="fab-alumnos" style="display:none"><button class="fab fbl" onclick="nuevoAlumno()">＋</button></div>
 <div class="fabs" id="fab-agenda" style="display:none"><button class="fab ftl" onclick="openEvModal()">＋</button></div>
@@ -1350,8 +1375,9 @@ function go(tab){
  el('panel-'+tab)?.classList.add('active');
  // FABs
  document.querySelectorAll('.fabs').forEach(f=>f.style.display='none');
- const fm={inicio:'fab-inicio',alumnos:'fab-alumnos',agenda:'fab-agenda',asistente:'fab-asistente'};
+ const fm={inicio:'fab-inicio',registro:'fab-registro',alumnos:'fab-alumnos',agenda:'fab-agenda',asistente:'fab-asistente'};
  if(fm[tab])el(fm[tab]).style.display='flex';
+ if(tab==='registro'&&regTab==='res')el('fab-registro').style.display='none';
  // Period selector visibility + label
  const rp=el('reg-psel');
  if(rp){rp.style.display=(tab==='registro'&&regTab!=='res')?'flex':'none';}
@@ -1364,6 +1390,13 @@ function setRegTab(t){
  el('reg-gast').style.display=t==='gast'?'block':'none';
  el('reg-res').style.display=t==='res'?'block':'none';
  if(t==='ing')rIng();else if(t==='gast')rGast();else if(t==='res')rRes();
+ // FAB de Registro: cambia de acción según la subpestaña, y se oculta en Resumen
+ const fr=el('fab-registro');
+ if(fr&&cTab==='registro')fr.style.display=(t==='res')?'none':'flex';
+ if(el('reg-fab'))el('reg-fab').textContent=t==='gast'?'💸':'＋';
+}
+function regFAB(){
+ if(regTab==='gast')openMod('modal-gasto');else openIngModal();
 }
 function setAsiTab(t){
  asiTab=t;['wa','alt','notas','feed'].forEach(x=>{el('asi-'+x)?.classList.toggle('active',x===t);el('asi-panel-'+x)&&(el('asi-panel-'+x).style.display=t===x?'block':'none');});
@@ -1698,14 +1731,14 @@ function rIng(){
    const nom=esc(alumnoNombreCombinado(e,alms));
    const pend=CALC.pendiente(e);
    const anticipo=CALC.cobrado(e);
-   rows.push(`<tr style="background:var(--lvl)"><td style="font-weight:800">👨‍👧 ${nom}</td><td style="font-size:13px;color:var(--txm)">${esc(e.actividad||'—')}</td><td style="font-weight:900;color:var(--tdd)">${fmt(e.cuota)}</td><td style="font-size:12px;color:var(--txm)">${anticipo>0?fmt(anticipo):'—'}</td><td style="font-weight:800;color:${pend>0?'var(--co)':'var(--ok)'}">${pend>0?fmt(pend):'✅'}</td><td><button class="tpay ${e.pagado?'p':'u'}" onclick="togP('${e.id}')">${e.pagado?'✅ Pagado':'⏳ Pendiente'}</button></td><td style="white-space:nowrap">${e.obs?`<span title="${esc(e.obs)}" style="cursor:help;margin-right:4px;font-size:14px">💬</span>`:''}<button class="edit-btn" onclick="editIngEntry('${e.id}')" title="Editar">✎</button><button class="btn bdr2 btn-xs" style="margin-left:4px" onclick="delIng('${e.id}')">✕</button></td></tr>`);
+   rows.push(`<tr style="background:var(--lvl)"><td data-label="Alumno" style="font-weight:800">👨‍👧 ${nom}</td><td data-label="Actividad" style="font-size:13px;color:var(--txm)">${esc(e.actividad||'—')}</td><td data-label="Cuota" style="font-weight:900;color:var(--tdd)">${fmt(e.cuota)}</td><td data-label="Anticipo" style="font-size:12px;color:var(--txm)">${anticipo>0?fmt(anticipo):'—'}</td><td data-label="Pendiente" style="font-weight:800;color:${pend>0?'var(--co)':'var(--ok)'}">${pend>0?fmt(pend):'✅'}</td><td data-label="Estado"><button class="tpay ${e.pagado?'p':'u'}" onclick="togP('${e.id}')">${e.pagado?'✅ Pagado':'⏳ Pendiente'}</button></td><td data-label="" style="white-space:nowrap">${e.obs?`<span title="${esc(e.obs)}" style="cursor:help;margin-right:4px;font-size:14px">💬</span>`:''}<button class="edit-btn" onclick="editIngEntry('${e.id}')" title="Editar">✎</button><button class="btn bdr2 btn-xs" style="margin-left:4px" onclick="delIng('${e.id}')">✕</button></td></tr>`);
   } else {
    shownIds.add(e.id);
    const al=e.alumnoId?alms.find(a=>a.id===e.alumnoId):null;
    const nom=al?(esc(al.nombre+(al.apellidos?' '+al.apellidos:''))):esc(e.nombre||'—');
    const pend=CALC.pendiente(e);
    const anticipo=CALC.cobrado(e);
-   rows.push(`<tr><td style="font-weight:800">${nom}</td><td style="font-size:13px;color:var(--txm)">${esc(e.actividad||'—')}</td><td style="font-weight:900;color:var(--tdd)">${fmt(e.cuota)}</td><td style="font-size:12px;color:var(--txm)">${anticipo>0?fmt(anticipo):'—'}</td><td style="font-weight:800;color:${pend>0?'var(--co)':'var(--ok)'}">${pend>0?fmt(pend):'✅'}</td><td><button class="tpay ${e.pagado?'p':'u'}" onclick="togP('${e.id}')">${e.pagado?'✅ Pagado':'⏳ Pendiente'}</button></td><td style="white-space:nowrap">${e.obs?`<span title="${esc(e.obs)}" style="cursor:help;margin-right:4px;font-size:14px">💬</span>`:''}<button class="edit-btn" onclick="editIngEntry('${e.id}')" title="Editar">✎</button><button class="btn bdr2 btn-xs" style="margin-left:4px" onclick="delIng('${e.id}')">✕</button></td></tr>`);
+   rows.push(`<tr><td data-label="Alumno" style="font-weight:800">${nom}</td><td data-label="Actividad" style="font-size:13px;color:var(--txm)">${esc(e.actividad||'—')}</td><td data-label="Cuota" style="font-weight:900;color:var(--tdd)">${fmt(e.cuota)}</td><td data-label="Anticipo" style="font-size:12px;color:var(--txm)">${anticipo>0?fmt(anticipo):'—'}</td><td data-label="Pendiente" style="font-weight:800;color:${pend>0?'var(--co)':'var(--ok)'}">${pend>0?fmt(pend):'✅'}</td><td data-label="Estado"><button class="tpay ${e.pagado?'p':'u'}" onclick="togP('${e.id}')">${e.pagado?'✅ Pagado':'⏳ Pendiente'}</button></td><td data-label="" style="white-space:nowrap">${e.obs?`<span title="${esc(e.obs)}" style="cursor:help;margin-right:4px;font-size:14px">💬</span>`:''}<button class="edit-btn" onclick="editIngEntry('${e.id}')" title="Editar">✎</button><button class="btn bdr2 btn-xs" style="margin-left:4px" onclick="delIng('${e.id}')">✕</button></td></tr>`);
   }
  });
  tb.innerHTML=rows.join('');
@@ -3425,17 +3458,9 @@ function init(){
   }
  });
 
- // Swipe left/right para nav (opcional, móvil)
- let tx=0;
- document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;},{passive:true});
- document.addEventListener('touchend',e=>{
-  const dx=e.changedTouches[0].clientX-tx;
-  if(Math.abs(dx)<60)return;
-  const tabs=['inicio','registro','alumnos','agenda','asistente','analisis'];
-  const i=tabs.indexOf(cTab);
-  if(dx<0&&i<tabs.length-1)go(tabs[i+1]);
-  else if(dx>0&&i>0)go(tabs[i-1]);
- },{passive:true});
+ // (Se quitó el swipe horizontal para cambiar de menú: era demasiado
+ // sensible y cambiaba de pestaña sin querer al hacer scroll normal.
+ // La navegación ahora es solo con los botones del nav inferior.)
 }
 
 // psel visibility handled inside go() already
