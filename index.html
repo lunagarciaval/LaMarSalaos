@@ -1008,7 +1008,9 @@ body.vd .toast{bottom:20px}
     <button class="btn bt2 btn-sm" style="width:100%;margin-bottom:5px;justify-content:center" onclick="odConnect()" id="odBtnConnect">🔗 Conectar OneDrive</button>
     <button class="btn bok2 btn-sm" style="width:100%;margin-bottom:5px;justify-content:center;display:none" onclick="odSync()" id="odBtnSync">🔄 Sincronizar (seguro)</button>
     <button class="btn bg btn-sm" style="width:100%;justify-content:center;display:none" onclick="odDisconnect()" id="odBtnOut">🔌 Desconectar</button>
+    <button class="btn bg btn-sm" style="width:100%;justify-content:center;display:none;margin-top:5px" onclick="odInspect()" id="odBtnInspect">🔍 Inspeccionar copia en OneDrive</button>
     <div id="od-ts" style="margin-top:10px;font-size:11.5px;font-weight:700;color:var(--txmu);line-height:1.9"></div>
+    <div id="od-inspect" style="margin-top:8px;font-size:11.5px;font-weight:600;color:var(--txt);background:var(--tll);border-radius:var(--rs);padding:8px 10px;display:none;white-space:pre-wrap"></div>
     <div class="fg" style="margin-top:8px"><label>⏱ Sincronización automática cada (minutos, 0 = desactivada)</label><input type="number" id="odAutoMin" min="0" step="1" placeholder="2" oninput="odChangeInterval(this.value)"></div>
     <div style="margin-top:6px;font-size:11px;color:var(--txmu);line-height:1.6">Sincronizar fusiona los cambios de ambos dispositivos (nunca sobrescribe a lo bruto). Puedes pulsar el botón cuando quieras, y además la app sincroniza sola cada X minutos si lo activas aquí.</div>
     <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bdr)">
@@ -3204,6 +3206,7 @@ function odUpdateUI(){
  document.getElementById('odBtnConnect').style.display=on?'none':'flex';
  document.getElementById('odBtnSync').style.display=on?'flex':'none';
  document.getElementById('odBtnOut').style.display=on?'flex':'none';
+ document.getElementById('odBtnInspect').style.display=on?'flex':'none';
  document.getElementById('oddot').className='ddot'+(on?' on':' off');
  document.getElementById('odstxt').textContent=on?acc.username:'Sin conectar';
  const inp=document.getElementById('odAutoMin');
@@ -3300,6 +3303,30 @@ function odMergeData(remote){
  tombAll.forEach(t=>{const k=t.col+':'+t.id;if(!seen.has(k)){seen.add(k);dedup.push(t);}});
  merged.tombstones=dedup.length>800?dedup.slice(-800):dedup;
  return merged;
+}
+
+// ─── Inspeccionar: mira qué hay en OneDrive AHORA MISMO, sin tocar
+// nada local ni remoto. Sirve para diagnosticar si un dispositivo no
+// ve los cambios del otro: compara este número con lo que ves en la
+// pantalla de Alumnos de cada dispositivo.
+async function odInspect(){
+ const box=document.getElementById('od-inspect');
+ box.style.display='block';box.textContent='Consultando OneDrive...';
+ try{
+  const token=await odGetToken();
+  const res=await fetch(ODURL,{headers:{'Authorization':'Bearer '+token},cache:'no-store'});
+  if(res.status===404){box.textContent='☁️ OneDrive: aún no hay ninguna copia subida.';return;}
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const d=await res.json();
+  const local=getAllData();
+  box.textContent=
+   '📄 En OneDrive ahora mismo (guardado: '+(d.ts?new Date(d.ts).toLocaleString('es-ES'):'—')+'):\n'+
+   '  Alumnos: '+((d.alumnos||[]).length)+' · Ingresos: '+((d.extras||[]).length)+' · Gastos: '+((d.gastos||[]).length)+' · Eventos: '+((d.eventos||[]).length)+'\n'+
+   '  Últimos 3 alumnos: '+((d.alumnos||[]).slice(-3).map(a=>a.nombre).join(', ')||'—')+'\n\n'+
+   '📱 En ESTE dispositivo ahora mismo:\n'+
+   '  Alumnos: '+((local.alumnos||[]).length)+' · Ingresos: '+((local.extras||[]).length)+' · Gastos: '+((local.gastos||[]).length)+' · Eventos: '+((local.eventos||[]).length)+'\n'+
+   '  Últimos 3 alumnos: '+((local.alumnos||[]).slice(-3).map(a=>a.nombre).join(', ')||'—');
+ }catch(e){box.textContent='❌ Error al inspeccionar: '+(e.message||e);}
 }
 
 // ─── Sincronizar: descarga → fusiona → guarda local → sube ───────
