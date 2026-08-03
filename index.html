@@ -3393,14 +3393,40 @@ if(odMsal){
   odUpdateUI();
  });
 }
+// El sistema operativo (sobre todo en el móvil) pausa el JavaScript
+// cuando la app está en segundo plano o el teléfono bloqueado — es
+// una limitación de todos los navegadores, no se puede evitar con
+// código. Por eso, además del temporizador cada X minutos, se
+// sincroniza también en el momento exacto en que vuelves a la app,
+// para que nunca tengas que esperar al intervalo.
+let _odLastAutoTrigger=0;
+function odMaybeSync(){
+ const acc=odMsal&&odMsal.getAllAccounts()[0];
+ if(!acc||!navigator.onLine)return;
+ const now=Date.now();
+ if(now-_odLastAutoTrigger<10000)return; // evita duplicados si saltan varios eventos a la vez
+ _odLastAutoTrigger=now;
+ odSync();
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')odMaybeSync();});
+window.addEventListener('focus',odMaybeSync);
+window.addEventListener('online',odMaybeSync);
 
 // ═══════════════════ TOAST ═════════════════════════════════════
-let _toastTimer;
+let _toastTimer,_toastHideTimer;
 function toast(msg){
  const t=el('toast');
+ clearTimeout(_toastTimer);clearTimeout(_toastHideTimer);
+ t.style.display='flex';
+ // Forzar reflow para que el navegador aplique 'display:flex' antes de
+ // añadir 'show' — si no, la transición de opacidad a veces no se ve
+ // en avisos consecutivos.
+ void t.offsetWidth;
  t.textContent=msg;t.classList.add('show');
- clearTimeout(_toastTimer);
- _toastTimer=setTimeout(()=>{t.classList.remove('show');setTimeout(()=>{t.style.display='none'},350);},2200);
+ _toastTimer=setTimeout(()=>{
+  t.classList.remove('show');
+  _toastHideTimer=setTimeout(()=>{t.style.display='none'},350);
+ },2200);
 }
 
 // ═══════════════════ INIT ══════════════════════════════════════
