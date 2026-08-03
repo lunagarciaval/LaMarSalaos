@@ -3314,7 +3314,7 @@ async function odInspect(){
  box.style.display='block';box.textContent='Consultando OneDrive...';
  try{
   const token=await odGetToken();
-  const res=await fetch(ODURL,{headers:{'Authorization':'Bearer '+token},cache:'no-store'});
+  const res=await fetch(ODURL+'?_cb='+Date.now(),{headers:{'Authorization':'Bearer '+token,'Cache-Control':'no-cache'},cache:'no-store'});
   if(res.status===404){box.textContent='☁️ OneDrive: aún no hay ninguna copia subida.';return;}
   if(!res.ok)throw new Error('HTTP '+res.status);
   const d=await res.json();
@@ -3333,7 +3333,7 @@ async function odInspect(){
 async function odSync(){
  try{
   const token=await odGetToken();
-  const res=await fetch(ODURL,{headers:{'Authorization':'Bearer '+token}});
+  const res=await fetch(ODURL+'?_cb='+Date.now(),{headers:{'Authorization':'Bearer '+token,'Cache-Control':'no-cache'},cache:'no-store'});
   let merged;
   if(res.ok){
    const remote=await res.json();
@@ -3346,7 +3346,7 @@ async function odSync(){
   rebSel();render();
   const up=await fetch(ODURL,{
    method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
-   body:JSON.stringify(merged,null,2)
+   cache:'no-store',body:JSON.stringify(merged,null,2)
   });
   if(!up.ok)throw new Error('HTTP '+up.status);
   sSet('od_last_sync',new Date().toISOString());odRenderTs();
