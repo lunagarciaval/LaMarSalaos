@@ -176,9 +176,10 @@ table{width:100%;border-collapse:collapse}
 .ing-tbl td[data-label=""]::before{content:none}
 body.vd .ing-tbl-wrap{overflow-x:auto}
 body.vd .ing-tbl thead{display:table-header-group}
-body.vd .ing-tbl,body.vd .ing-tbl tbody{display:table}
+body.vd .ing-tbl{display:table;width:100%;table-layout:auto}
+body.vd .ing-tbl tbody{display:table-row-group}
 body.vd .ing-tbl tr{display:table-row;background:none;border:none;border-radius:0;margin-bottom:0}
-body.vd .ing-tbl td{display:table-cell;padding:10px 12px;border-bottom:1px solid var(--bdr);text-align:left}
+body.vd .ing-tbl td{display:table-cell;padding:10px 12px;border-bottom:1px solid var(--bdr);text-align:left;white-space:normal}
 body.vd .ing-tbl td::before{content:none}
 .pend-month-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;user-select:none;border-radius:var(--rs);background:var(--wh);border:1.5px solid var(--bdr);margin-bottom:4px;transition:background .15s}
 .pend-month-hdr:hover,.pend-month-hdr.open{background:var(--tll);border-color:var(--t)}
@@ -1031,13 +1032,19 @@ body.vd .toast{bottom:20px}
    <div class="csec"><h3>☁️ OneDrive</h3>
     <div class="dbs" id="odstat"><span class="ddot off" id="oddot"></span><span id="odstxt">Sin conectar</span></div>
     <button class="btn bt2 btn-sm" style="width:100%;margin-bottom:5px;justify-content:center" onclick="odConnect()" id="odBtnConnect">🔗 Conectar OneDrive</button>
-    <button class="btn bok2 btn-sm" style="width:100%;margin-bottom:5px;justify-content:center;display:none" onclick="odSync()" id="odBtnSync">🔄 Sincronizar (seguro)</button>
+    <button class="btn bok2 btn-sm" style="width:100%;margin-bottom:5px;justify-content:center;display:none" onclick="odSync('manual')" id="odBtnSync">🔄 Sincronizar (seguro)</button>
     <button class="btn bg btn-sm" style="width:100%;justify-content:center;display:none" onclick="odDisconnect()" id="odBtnOut">🔌 Desconectar</button>
     <button class="btn bg btn-sm" style="width:100%;justify-content:center;display:none;margin-top:5px" onclick="odInspect()" id="odBtnInspect">🔍 Inspeccionar copia en OneDrive</button>
     <div id="od-ts" style="margin-top:10px;font-size:11.5px;font-weight:700;color:var(--txmu);line-height:1.9"></div>
     <div id="od-inspect" style="margin-top:8px;font-size:11.5px;font-weight:600;color:var(--txt);background:var(--tll);border-radius:var(--rs);padding:8px 10px;display:none;white-space:pre-wrap"></div>
-    <div class="fg" style="margin-top:8px"><label>⏱ Sincronización automática cada (minutos, 0 = desactivada)</label><input type="number" id="odAutoMin" min="0" step="1" placeholder="2" oninput="odChangeInterval(this.value)"></div>
-    <div style="margin-top:6px;font-size:11px;color:var(--txmu);line-height:1.6">Sincronizar fusiona los cambios de ambos dispositivos (nunca sobrescribe a lo bruto). Puedes pulsar el botón cuando quieras, y además la app sincroniza sola cada X minutos si lo activas aquí.</div>
+    <div class="fg" style="margin-top:8px"><label>⏱ Sincronización automática cada (minutos, 0 = desactivada)</label><input type="number" id="odAutoMin" min="0" step="1" placeholder="5" oninput="odChangeInterval(this.value)"></div>
+    <div style="margin-top:6px;font-size:11px;color:var(--txmu);line-height:1.6">Sincronizar fusiona los cambios de los dos dispositivos: de cada ficha gana siempre la edición más reciente, mires desde donde mires. Se sincroniza sola cada X minutos y también cada vez que vuelves a abrir la app.</div>
+    <details style="margin-top:10px">
+     <summary style="font-size:11.5px;font-weight:800;color:var(--txmu);cursor:pointer">⚠️ Opciones de emergencia</summary>
+     <div style="font-size:11px;color:var(--txmu);line-height:1.6;margin:8px 0">Solo si los dos aparatos se descuadran. Decides cuál manda y el otro se iguala. <b>Haz antes una copia con "📥 Descargar copia manual".</b></div>
+     <button class="btn bg btn-sm" style="width:100%;margin-bottom:5px;justify-content:center;display:none" onclick="odForcePush()" id="odBtnPush">⬆️ Forzar: mandan los datos de ESTE dispositivo</button>
+     <button class="btn bg btn-sm" style="width:100%;justify-content:center;display:none" onclick="odForcePull()" id="odBtnPull">⬇️ Forzar: manda la copia de OneDrive</button>
+    </details>
     <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bdr)">
      <div style="font-size:12px;font-weight:700;color:var(--txmu);margin-bottom:6px">📲 Contactos WhatsApp</div>
      <div style="font-size:12px;font-weight:600;color:var(--txmu);margin-bottom:8px">Si un contacto nuevo no aparece en WhatsApp, pulsa este botón para normalizar todos los números.</div>
@@ -1129,7 +1136,34 @@ const CHS={};
 
 // ═══════════════════ DATA LAYER ════════════════════════════════
 const ld=k=>{try{return JSON.parse(localStorage.getItem('lms_'+k)||'[]')}catch{return[]}};
-const sv=(k,v)=>localStorage.setItem('lms_'+k,JSON.stringify(v));
+/* ═══ SELLO DE TIEMPO POR REGISTRO (_ts) — clave para la sincronización ═══
+   Cada ficha (un ingreso, un alumno, un evento…) lleva un sello con el
+   momento exacto en que SE MODIFICÓ ESA FICHA. Se pone solo cuando esa
+   ficha concreta cambia de verdad, no cuando se guarda la lista entera.
+
+   Por qué hace falta: sin esto, al fusionar dos dispositivos había que
+   decidir "quién gana" y ganaba siempre el aparato desde el que estabas
+   sincronizando. Resultado: las fichas NUEVAS sí viajaban, pero un
+   cambio sobre una ficha que ya existía (marcar Pagado, cambiar los
+   niños de una actividad) se perdía al sincronizar desde el otro lado.
+   Con el sello, gana siempre la edición más reciente de cada ficha por
+   separado, mires desde donde mires. */
+let _noStamp=false; // al cargar datos ya fusionados no se re-sella nada
+function _stampArr(k,arr){
+ if(!Array.isArray(arr))return arr;
+ let prev=[];try{const raw=localStorage.getItem('lms_'+k);prev=raw?JSON.parse(raw):[]}catch{prev=[]}
+ const norm=new Map(),ots=new Map();
+ if(Array.isArray(prev))prev.forEach(p=>{if(p&&p.id!=null){norm.set(p.id,JSON.stringify({...p,_ts:0}));ots.set(p.id,+p._ts||0);}});
+ const now=Date.now();
+ arr.forEach(r=>{
+  if(!r||typeof r!=='object'||r.id==null)return;
+  const cur=JSON.stringify({...r,_ts:0});
+  if(!norm.has(r.id)||norm.get(r.id)!==cur)r._ts=now; // ficha nueva o editada
+  else r._ts=ots.get(r.id)||0;                        // sin cambios: conserva su sello
+ });
+ return arr;
+}
+const sv=(k,v)=>localStorage.setItem('lms_'+k,JSON.stringify(_noStamp?v:_stampArr(k,v)));
 const ldO=(k,d)=>{try{const r=localStorage.getItem('lms_'+k);return r?JSON.parse(r):d}catch{return d}};
 const svO=(k,v)=>localStorage.setItem('lms_'+k,JSON.stringify(v));
 const gE=()=>ld('ext');    const sE=d=>sv('ext',d);
@@ -1177,15 +1211,20 @@ function gCfg(){
   return c;}}catch{}
  return{actividades:DACTS.slice(),gastos:DGAST.slice(),cats:{...DCATS},wts:{...DWTS},nmn_obj:20,tipos_evento:DTIPOS.slice(),max_ninos_dia:20,inicio_secs:INIT_SECS_DEF.map(s=>({...s})),inicio_stats:INIT_STATS_DEF.map(s=>({...s}))};
 }
-function sCfg(c){localStorage.setItem('lms_cfg',JSON.stringify(c))}
+function sCfg(c){if(!_noStamp)c._ts=Date.now();localStorage.setItem('lms_cfg',JSON.stringify(c))}
 function getAllData(){return{extras:gE(),gastos:gG(),alumnos:gAl(),eventos:gEv(),alertas:gAlt(),notas:gNt(),config:gCfg(),adv_charts:gAC(),wa_history:gWAH(),templates:gTmpl(),feed_items:gFeed(),feed_prefs:gFeedP(),day_notes:gDN(),v:4,ts:new Date().toISOString()}}
 function loadAll(d){
- if(d.extras)sE(d.extras);if(d.gastos)sG(d.gastos);if(d.alumnos)sAl(d.alumnos);
- if(d.eventos)sEv(d.eventos);if(d.alertas)sAlt(d.alertas);if(d.notas)sNt(d.notas);
- if(d.config)sCfg(d.config);if(d.adv_charts)sAC(d.adv_charts);
- if(d.wa_history)sWAH(d.wa_history);if(d.templates)sTmpl(d.templates);
- if(d.feed_items)sFeed(d.feed_items);if(d.feed_prefs)sFeedP(d.feed_prefs);
- if(d.day_notes)sDN(d.day_notes);
+ // Al cargar datos ya fusionados (o un backup) se escriben TAL CUAL:
+ // no se re-sellan, para no borrar la fecha real de cada edición.
+ const _prev=_noStamp;_noStamp=true;
+ try{
+  if(d.extras)sE(d.extras);if(d.gastos)sG(d.gastos);if(d.alumnos)sAl(d.alumnos);
+  if(d.eventos)sEv(d.eventos);if(d.alertas)sAlt(d.alertas);if(d.notas)sNt(d.notas);
+  if(d.config)sCfg(d.config);if(d.adv_charts)sAC(d.adv_charts);
+  if(d.wa_history)sWAH(d.wa_history);if(d.templates)sTmpl(d.templates);
+  if(d.feed_items)sFeed(d.feed_items);if(d.feed_prefs)sFeedP(d.feed_prefs);
+  if(d.day_notes)sDN(d.day_notes);
+ }finally{_noStamp=_prev;}
 }
 let _id=Date.now(); const gid=()=>(++_id).toString(36)+Math.random().toString(36).slice(2,5);
 
@@ -3077,6 +3116,7 @@ function saveNmnObj(){
 
 // ═══════════════════ FILE SYSTEM + BACKUP ══════════════════════
 let dbFH=null,dbDH=null,_dirty=false,_lastSaveTs=null,_lastBkpTs=null;
+let _odDirty=false; // ¿hay cambios locales pendientes de subir a OneDrive?
 
 // ── IndexedDB helpers para persistir el DirectoryHandle entre sesiones ──
 function idbReq(mode,fn){
@@ -3194,7 +3234,7 @@ async function saveNow(){
 }
 let _lastAutoSave=0;
 async function autoSave(){markDirty();}
-function markDirty(){_dirty=true;}
+function markDirty(){_dirty=true;_odDirty=true;}
 // Intervalo 2 min — sólo guarda si hay BD vinculada y hay cambios
 setInterval(async()=>{if(_dirty&&dbFH){await saveNow();}},120000);
 function backupData(){
@@ -3240,10 +3280,13 @@ function odUpdateUI(){
  document.getElementById('odBtnSync').style.display=on?'flex':'none';
  document.getElementById('odBtnOut').style.display=on?'flex':'none';
  document.getElementById('odBtnInspect').style.display=on?'flex':'none';
+ const bp=document.getElementById('odBtnPush'),bl=document.getElementById('odBtnPull');
+ if(bp)bp.style.display=on?'flex':'none';
+ if(bl)bl.style.display=on?'flex':'none';
  document.getElementById('oddot').className='ddot'+(on?' on':' off');
  document.getElementById('odstxt').textContent=on?acc.username:'Sin conectar';
  const inp=document.getElementById('odAutoMin');
- if(inp)inp.value=gSet('od_auto_min')!=null?gSet('od_auto_min'):2;
+ if(inp)inp.value=gSet('od_auto_min')!=null?gSet('od_auto_min'):5;
  odRenderTs();
  odSetupAutoSync();
 }
@@ -3259,9 +3302,13 @@ function odChangeInterval(val){
 function odSetupAutoSync(){
  if(odAutoTimer){clearInterval(odAutoTimer);odAutoTimer=null;}
  const acc=odMsal&&odMsal.getAllAccounts()[0];
- const min=gSet('od_auto_min')!=null?parseFloat(gSet('od_auto_min')):2;
+ const min=gSet('od_auto_min')!=null?parseFloat(gSet('od_auto_min')):5;
  if(acc&&min>0){
-  odAutoTimer=setInterval(()=>{if(navigator.onLine)odSync();},min*60000);
+  odAutoTimer=setInterval(()=>{
+   // Con la app en segundo plano no tiene sentido gastar batería:
+   // al volver a ella se sincroniza igualmente (visibilitychange).
+   if(navigator.onLine&&document.visibilityState==='visible')odSync('auto');
+  },min*60000);
  }
 }
 function odRenderTs(){
@@ -3291,6 +3338,7 @@ async function odGetToken(){
  }
 }
 const ODURL='https://graph.microsoft.com/v1.0/me/drive/special/approot:/BBDD.json:/content';
+const ODMETA='https://graph.microsoft.com/v1.0/me/drive/special/approot:/BBDD.json';
 
 // ─── Tombstones (borrados) ───────────────────────────────────────
 // Registra qué se ha borrado y cuándo, para que al fusionar con el
@@ -3310,16 +3358,53 @@ function odTomb(col,id){
 // fusionan superficialmente. Al final se aplican los borrados
 // (tombstones) de ambos lados para que no reaparezca nada borrado.
 const OD_ARR_COLS=['extras','gastos','alumnos','eventos','alertas','notas','adv_charts','wa_history','templates','feed_items'];
+// Contadores para saber si la fusión ha cambiado algo (y así evitar
+// redibujar la pantalla o volver a subir cuando no hace falta: menos
+// trabajo del móvil = menos batería).
+let _odRemoteWins=0,_odLocalWins=0;
 function odMergeCol(local,remote,tombIds){
  const map=new Map();
  (remote||[]).forEach(r=>{if(r&&r.id!=null)map.set(r.id,r);});
- (local||[]).forEach(l=>{if(l&&l.id!=null)map.set(l.id,l);});
+ (local||[]).forEach(l=>{
+  if(!l||l.id==null)return;
+  const r=map.get(l.id);
+  if(!r){map.set(l.id,l);_odLocalWins++;return;}   // solo existe aquí
+  const lt=+l._ts||0,rt=+r._ts||0;
+  if(lt>rt){map.set(l.id,l);_odLocalWins++;}       // mi edición es más reciente
+  else if(rt>lt){_odRemoteWins++;}                 // la del otro aparato es más reciente
+  else{                                            // mismo sello: comparar contenido
+   const same=JSON.stringify({...l,_ts:0})===JSON.stringify({...r,_ts:0});
+   map.set(l.id,l);if(!same)_odLocalWins++;
+  }
+ });
+ (remote||[]).forEach(r=>{if(r&&r.id!=null&&!(local||[]).some(l=>l&&l.id===r.id))_odRemoteWins++;});
  let merged=[...map.values()];
- if(tombIds&&tombIds.size)merged=merged.filter(x=>!tombIds.has(x.id));
+ if(tombIds&&tombIds.size){const n=merged.length;merged=merged.filter(x=>!tombIds.has(x.id));if(merged.length!==n)_odRemoteWins++;}
  return merged;
+}
+// Objetos sueltos con sello propio (config): gana el más reciente.
+function odMergeCfg(local,remote){
+ const lt=+(local&&local._ts)||0,rt=+(remote&&remote._ts)||0;
+ if(rt>lt){_odRemoteWins++;return remote;}
+ if(lt>rt)_odLocalWins++;
+ return local||remote||{};
+}
+// Notas del día: van por fecha y cada una ya guarda su propia hora de
+// edición (ts), así que se compara fecha por fecha.
+function odMergeDN(local,remote){
+ const out={...(remote||{})};
+ Object.keys(local||{}).forEach(k=>{
+  const l=local[k],r=out[k];
+  if(!r){out[k]=l;_odLocalWins++;return;}
+  const lt=Date.parse(l&&l.ts)||0,rt=Date.parse(r&&r.ts)||0;
+  if(lt>=rt){out[k]=l;if(lt>rt)_odLocalWins++;}else _odRemoteWins++;
+ });
+ Object.keys(remote||{}).forEach(k=>{if(!(local||{})[k])_odRemoteWins++;});
+ return out;
 }
 function odMergeObj(local,remote){return{...(remote||{}),...(local||{})};}
 function odMergeData(remote){
+ _odRemoteWins=0;_odLocalWins=0;
  const local=getAllData();
  const localTomb=gSet('__tomb')||[];
  const remoteTomb=(remote&&remote.tombstones)||[];
@@ -3328,13 +3413,14 @@ function odMergeData(remote){
  tombAll.forEach(t=>{if(!byCol[t.col])byCol[t.col]=new Set();byCol[t.col].add(t.id);});
  const merged={};
  OD_ARR_COLS.forEach(k=>{merged[k]=odMergeCol(local[k],remote&&remote[k],byCol[k]);});
- merged.config=odMergeObj(local.config,remote&&remote.config);
+ merged.config=odMergeCfg(local.config,remote&&remote.config);
  merged.feed_prefs=odMergeObj(local.feed_prefs,remote&&remote.feed_prefs);
- merged.day_notes=odMergeObj(local.day_notes,remote&&remote.day_notes);
+ merged.day_notes=odMergeDN(local.day_notes,remote&&remote.day_notes);
  merged.v=4;merged.ts=new Date().toISOString();
  const seen=new Set(),dedup=[];
  tombAll.forEach(t=>{const k=t.col+':'+t.id;if(!seen.has(k)){seen.add(k);dedup.push(t);}});
  merged.tombstones=dedup.length>800?dedup.slice(-800):dedup;
+ if(remoteTomb.length!==dedup.length)_odLocalWins++;
  return merged;
 }
 
@@ -3363,53 +3449,111 @@ async function odInspect(){
 }
 
 // ─── Sincronizar: descarga → fusiona → guarda local → sube ───────
-async function odSync(){
+// modo 'auto'   → silenciosa; si nada ha cambiado en ninguno de los dos
+//                 lados, no descarga ni sube nada (ahorra batería).
+// modo 'manual' → siempre comprueba y avisa del resultado.
+let _odSyncing=false;
+async function odSync(mode){
+ if(_odSyncing)return;                       // nunca dos a la vez
+ const auto=mode==='auto';
+ _odSyncing=true;
  try{
   const token=await odGetToken();
+  if(!token)return;
+  // Paso barato: preguntar SOLO por la ficha del archivo (unos bytes),
+  // no por su contenido. Si el archivo no ha cambiado en OneDrive y yo
+  // tampoco he tocado nada, no hay nada que hacer.
+  let remoteTag=null;
+  try{
+   const meta=await fetch(ODMETA+'?_cb='+Date.now(),{headers:{'Authorization':'Bearer '+token,'Cache-Control':'no-cache'},cache:'no-store'});
+   if(meta.ok){const mj=await meta.json();remoteTag=mj.cTag||mj.eTag||mj.lastModifiedDateTime||null;}
+  }catch(e){}
+  if(auto&&!_odDirty&&remoteTag&&remoteTag===gSet('od_tag')){_odSyncing=false;return;}
+
   const res=await fetch(ODURL+'?_cb='+Date.now(),{headers:{'Authorization':'Bearer '+token,'Cache-Control':'no-cache'},cache:'no-store'});
   let merged;
   if(res.ok){
    const remote=await res.json();
    merged=odMergeData(remote);
   }else if(res.status===404){
+   _odRemoteWins=0;_odLocalWins=1;
    merged={...getAllData(),tombstones:gSet('__tomb')||[]};
   }else throw new Error('HTTP '+res.status);
-  loadAll(merged);
-  sSet('__tomb',merged.tombstones||[]);
-  rebSel();render();
-  const up=await fetch(ODURL,{
-   method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
-   cache:'no-store',body:JSON.stringify(merged,null,2)
-  });
-  if(!up.ok)throw new Error('HTTP '+up.status);
+
+  // Solo tocar la pantalla si de verdad han llegado cambios del otro aparato
+  if(_odRemoteWins>0){
+   loadAll(merged);
+   sSet('__tomb',merged.tombstones||[]);
+   rebSel();render();
+  }
+  // Solo subir si yo tengo algo que el otro lado no tiene
+  if(_odLocalWins>0||!res.ok){
+   const up=await fetch(ODURL,{
+    method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+    cache:'no-store',body:JSON.stringify(merged,null,2)
+   });
+   if(!up.ok)throw new Error('HTTP '+up.status);
+   try{const uj=await up.json();sSet('od_tag',uj.cTag||uj.eTag||null);}catch(e){sSet('od_tag',null);}
+  }else if(remoteTag){sSet('od_tag',remoteTag);}
+  _odDirty=false;
   sSet('od_last_sync',new Date().toISOString());odRenderTs();
-  toast('🔄 Sincronizado con OneDrive');
- }catch(e){toast('❌ Error al sincronizar: '+(e.message||e));}
+  if(!auto)toast(_odRemoteWins>0?'🔄 Sincronizado — han llegado cambios':'🔄 Sincronizado — todo al día');
+  else if(_odRemoteWins>0)toast('🔄 Cambios recibidos del otro dispositivo');
+ }catch(e){
+  if(!auto)toast('❌ Error al sincronizar: '+(e.message||e));
+ }finally{_odSyncing=false;}
+}
+
+// ─── Botones de emergencia (uno u otro, nunca los dos a la vez) ──
+// Sirven para el primer arranque de esta versión y por si alguna vez
+// los dos aparatos se quedan descuadrados: fijas cuál manda y punto.
+async function odForcePush(){
+ if(!confirm('FORZAR SUBIDA\n\nLa copia de OneDrive se sustituirá por lo que hay en ESTE dispositivo.\nLo que solo esté en el otro aparato y no aquí, se perderá.\n\n¿Seguro?'))return;
+ try{
+  const token=await odGetToken();if(!token)return;
+  const data={...getAllData(),tombstones:gSet('__tomb')||[]};
+  const up=await fetch(ODURL,{method:'PUT',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},cache:'no-store',body:JSON.stringify(data,null,2)});
+  if(!up.ok)throw new Error('HTTP '+up.status);
+  try{const uj=await up.json();sSet('od_tag',uj.cTag||uj.eTag||null);}catch(e){}
+  _odDirty=false;sSet('od_last_sync',new Date().toISOString());odRenderTs();
+  toast('⬆️ OneDrive actualizado con los datos de este dispositivo');
+ }catch(e){toast('❌ Error: '+(e.message||e));}
+}
+async function odForcePull(){
+ if(!confirm('FORZAR DESCARGA\n\nLos datos de ESTE dispositivo se sustituirán por la copia de OneDrive.\nLo que solo esté aquí y no en OneDrive, se perderá.\n\n¿Seguro?'))return;
+ try{
+  const token=await odGetToken();if(!token)return;
+  const res=await fetch(ODURL+'?_cb='+Date.now(),{headers:{'Authorization':'Bearer '+token,'Cache-Control':'no-cache'},cache:'no-store'});
+  if(res.status===404){toast('⚠️ Todavía no hay copia en OneDrive');return;}
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const d=await res.json();
+  loadAll(d);sSet('__tomb',d.tombstones||[]);rebSel();render();
+  _odDirty=false;sSet('od_last_sync',new Date().toISOString());odRenderTs();
+  toast('⬇️ Datos de OneDrive cargados en este dispositivo');
+ }catch(e){toast('❌ Error: '+(e.message||e));}
 }
 if(odMsal){
  odMsal.handleRedirectPromise().catch(()=>{}).finally(()=>{
   const accs=odMsal.getAllAccounts();
-  if(accs[0]){odMsal.setActiveAccount(accs[0]);odSync();}
+  if(accs[0]){odMsal.setActiveAccount(accs[0]);odSync('auto');}
   odUpdateUI();
  });
 }
 // El sistema operativo (sobre todo en el móvil) pausa el JavaScript
 // cuando la app está en segundo plano o el teléfono bloqueado — es
 // una limitación de todos los navegadores, no se puede evitar con
-// código. Por eso, además del temporizador cada X minutos, se
-// sincroniza también en el momento exacto en que vuelves a la app,
-// para que nunca tengas que esperar al intervalo.
+// código. Por eso, además del temporizador, se sincroniza en el
+// momento exacto en que vuelves a la app: así nunca esperas.
 let _odLastAutoTrigger=0;
 function odMaybeSync(){
  const acc=odMsal&&odMsal.getAllAccounts()[0];
  if(!acc||!navigator.onLine)return;
  const now=Date.now();
- if(now-_odLastAutoTrigger<10000)return; // evita duplicados si saltan varios eventos a la vez
+ if(now-_odLastAutoTrigger<30000)return; // no repetir si acaba de hacerlo
  _odLastAutoTrigger=now;
- odSync();
+ odSync('auto');
 }
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')odMaybeSync();});
-window.addEventListener('focus',odMaybeSync);
 window.addEventListener('online',odMaybeSync);
 
 // ═══════════════════ TOAST ═════════════════════════════════════
